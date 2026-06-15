@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Championnat — Saisie des résultats</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; background: #f4f6f9; color: #222; min-height: 100vh; }
+
+  header { background: #1a3a5c; color: white; padding: 1rem 1.5rem; display: flex; align-items: center; gap: 1rem; }
+  header h1 { font-size: 1.3rem; font-weight: 600; }
+  header p { font-size: 0.85rem; opacity: 0.8; margin-top: 2px; }
+
+  .container { max-width: 900px; margin: 0 auto; padding: 1.5rem 1rem; }
+
+  .section-title { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #666; margin: 1.5rem 0 0.75rem; }
+
+  .card { background: white; border-radius: 10px; border: 1px solid #e0e4ea; padding: 1.25rem; margin-bottom: 1rem; }
+
+  label { font-size: 0.85rem; color: #444; display: block; margin-bottom: 4px; font-weight: 500; }
+  select, input[type="number"], input[type="password"], input[type="text"] {
+    width: 100%; padding: 0.55rem 0.75rem; border: 1px solid #cdd3dc; border-radius: 7px;
+    font-size: 0.95rem; background: #fafbfc; color: #222; outline: none;
+    transition: border-color 0.15s;
+  }
+  select:focus, input:focus { border-color: #378add; background: white; }
+
+  .match-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 0.75rem; align-items: end; margin-top: 0.5rem; }
+  .vs { font-size: 1.1rem; font-weight: 700; color: #888; text-align: center; padding-bottom: 0.5rem; }
+  .score-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  .score-label { font-size: 0.78rem; color: #666; text-align: center; margin-bottom: 4px; }
+
+  .btn { padding: 0.65rem 1.4rem; border-radius: 8px; border: none; cursor: pointer; font-size: 0.95rem; font-weight: 600; transition: all 0.15s; }
+  .btn-primary { background: #1a3a5c; color: white; }
+  .btn-primary:hover { background: #235080; }
+  .btn-secondary { background: #eef2f7; color: #333; border: 1px solid #cdd3dc; }
+  .btn-secondary:hover { background: #dde3ee; }
+  .btn-danger { background: #e24b4a; color: white; }
+  .btn-danger:hover { background: #c53d3d; }
+
+  .actions { display: flex; gap: 0.75rem; margin-top: 1rem; flex-wrap: wrap; }
+
+  .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); background: #1a3a5c; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; font-size: 0.9rem; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; }
+  .toast.show { opacity: 1; }
+  .toast.error { background: #e24b4a; }
+  .toast.success { background: #1d9e75; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  th { background: #f0f3f8; padding: 0.6rem 0.75rem; text-align: left; font-weight: 600; color: #444; border-bottom: 2px solid #dde3ee; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  td { padding: 0.55rem 0.75rem; border-bottom: 1px solid #eef0f4; }
+  tr:hover td { background: #f9fafc; }
+  .rank { font-weight: 700; color: #1a3a5c; }
+  .pts { font-weight: 700; font-size: 1rem; color: #1a3a5c; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 0.75rem; font-weight: 600; }
+  .badge-gold { background: #FFF3CD; color: #856404; }
+  .badge-silver { background: #e9ecef; color: #495057; }
+  .badge-bronze { background: #FDE5D3; color: #7a3e20; }
+
+  .team-equipe { font-weight: 600; position: relative; cursor: pointer; }
+  .team-equipe:hover { color: #1a3a5c; text-decoration: underline dotted; }
+  .team-tooltip {
+    display: none;
+    position: absolute;
+    left: 0; top: 100%;
+    background: #1a3a5c;
+    color: white;
+    border-radius: 8px;
+    padding: 0.6rem 0.9rem;
+    font-size: 0.82rem;
+    font-weight: 400;
+    white-space: nowrap;
+    z-index: 50;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+    line-height: 1.7;
+    min-width: 200px;
+    pointer-events: none;
+  }
+  .team-tooltip::before {
+    content: '';
+    position: absolute;
+    top: -6px; left: 14px;
+    border: 6px solid transparent;
+    border-top: none;
+    border-bottom-color: #1a3a5c;
+  }
+  .team-equipe:hover .team-tooltip { display: block; }
+
+  .nav { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .nav-btn { padding: 0.5rem 1rem; border-radius: 7px; border: 1px solid #cdd3dc; background: white; cursor: pointer; font-size: 0.9rem; color: #333; transition: all 0.15s; }
+  .nav-btn.active { background: #1a3a5c; color: white; border-color: #1a3a5c; }
+
+  .view { display: none; }
+  .view.active { display: block; }
+
+  .info-box { background: #e6f1fb; border-left: 4px solid #378add; padding: 0.75rem 1rem; border-radius: 0 8px 8px 0; margin-bottom: 1rem; font-size: 0.88rem; color: #185fa5; }
+  .warning-box { background: #faeeda; border-left: 4px solid #ef9f27; padding: 0.75rem 1rem; border-radius: 0 8px 8px 0; margin-bottom: 1rem; font-size: 0.88rem; color: #854f0b; }
+
+  .result-list { display: flex; flex-direction: column; gap: 0.5rem; }
+  .result-item { display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.75rem; background: #f7f9fc; border-radius: 7px; font-size: 0.88rem; }
+  .result-score { font-weight: 700; color: #1a3a5c; font-size: 1rem; }
+  .delete-btn { background: none; border: none; color: #e24b4a; cursor: pointer; font-size: 1rem; padding: 2px 6px; border-radius: 5px; }
+  .delete-btn:hover { background: #fce8e8; }
+
+  .admin-section { border-top: 2px dashed #e0e4ea; padding-top: 1rem; margin-top: 1rem; }
+
+  .filter-row { display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
+  .filter-row select { max-width: 200px; }
+
+  .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; align-items: center; justify-content: center; }
+  .modal-bg.open { display: flex; }
+  .modal { background: white; border-radius: 12px; padding: 1.5rem; max-width: 400px; width: 90%; }
+  .modal h3 { margin-bottom: 0.75rem; color: #1a3a5c; }
+  .modal-actions { display: flex; gap: 0.75rem; margin-top: 1rem; }
+
+  @media(max-width: 600px) {
+    .match-grid { grid-template-columns: 1fr; }
+    .vs { padding: 0; }
+    header h1 { font-size: 1.1rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🎯 Championnat — Saisie des résultats</h1>
+    <p>Entrez le résultat de votre match après chaque journée</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="nav">
+    <button class="nav-btn active" onclick="showView('saisie')">Saisir un résultat</button>
+    <button class="nav-btn" onclick="showView('classement')">Classement</button>
+    <button class="nav-btn" onclick="showView('resultats')">Tous les résultats</button>
+    <button class="nav-btn" onclick="showView('admin')">Administration</button>
+  </div>
+
+  <!-- SAISIE -->
+  <div id="view-saisie" class="view active">
+    <div class="info-box">Sélectionnez votre équipe, la journée et entrez le score du match. Les scores sont en sets remportés.</div>
+
+    <div class="card">
+      <div class="section-title">Identification</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-top:0.5rem;">
+        <div>
+          <label>Votre équipe</label>
+          <select id="mon-equipe" onchange="updateAdversaires()">
+            <option value="">— Choisir —</option>
+          </select>
+        </div>
+        <div>
+          <label>Journée</label>
+          <select id="journee-select">
+            <option value="">— Choisir —</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="match-card" style="display:none">
+      <div class="section-title">Match</div>
+      <div style="margin-top:0.5rem;">
+        <label>Adversaire</label>
+        <select id="adversaire-select" onchange="updateMatchDisplay()">
+          <option value="">— Choisir l'adversaire —</option>
+        </select>
+      </div>
+      <div class="match-grid" style="margin-top:1rem;" id="score-display">
+        <div>
+          <div class="score-label" id="label-domicile">Équipe A</div>
+          <input type="number" id="score-a" min="0" max="99" placeholder="0" oninput="updatePreview()">
+        </div>
+        <div class="vs">vs</div>
+        <div>
+          <div class="score-label" id="label-exterieur">Équipe B</div>
+          <input type="number" id="score-b" min="0" max="99" placeholder="0" oninput="updatePreview()">
+        </div>
+      </div>
+      <div id="preview-result" style="text-align:center; margin-top:0.75rem; font-size:0.88rem; color:#666;"></div>
+      <div style="margin-top:0.75rem;">
+        <label>Commentaire (optionnel)</label>
+        <input type="text" id="commentaire" placeholder="Ex: Match serré, terrain difficile..." maxlength="120">
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="soumettreResultat()">Valider le résultat</button>
+        <button class="btn btn-secondary" onclick="resetForm()">Annuler</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CLASSEMENT -->
+  <div id="view-classement" class="view">
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+        <strong style="font-size:1rem;">Classement général</strong>
+        <span style="font-size:0.8rem; color:#888;" id="last-update-label"></span>
+      </div>
+      <div style="font-size:0.78rem;color:#555;background:#f0f3f8;border-radius:7px;padding:0.5rem 0.9rem;margin-bottom:1rem;display:flex;gap:1.2rem;flex-wrap:wrap;">
+        <span>🏆 Victoire : <b>4 pts</b></span>
+        <span>😓 Défaite 3/2 : <b>3 pts</b></span>
+        <span>😞 Défaite 3/0 ou 3/1 : <b>2 pts</b></span>
+      </div>
+      <div id="classement-container">
+        <p style="color:#888; text-align:center; padding:2rem;">Aucune donnée enregistrée.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- RÉSULTATS -->
+  <div id="view-resultats" class="view">
+    <div class="card">
+      <strong style="font-size:1rem;">Résultats enregistrés</strong>
+      <div class="filter-row" style="margin-top:0.75rem;">
+        <select id="filtre-journee" onchange="afficherResultats()">
+          <option value="">Toutes les journées</option>
+        </select>
+        <select id="filtre-equipe" onchange="afficherResultats()">
+          <option value="">Toutes les équipes</option>
+        </select>
+      </div>
+      <div id="resultats-container">
+        <p style="color:#888; text-align:center; padding:2rem;">Aucun résultat enregistré.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN -->
+  <div id="view-admin" class="view">
+    <div class="warning-box">Cette section est réservée à l'organisateur du championnat.</div>
+    <div class="card">
+      <div class="section-title">Connexion administrateur</div>
+      <div style="display:flex; gap:0.75rem; margin-top:0.5rem; align-items:flex-end;">
+        <div style="flex:1;">
+          <label>Mot de passe</label>
+          <input type="password" id="admin-pwd" placeholder="Mot de passe admin" onkeydown="if(event.key==='Enter')connecterAdmin()">
+        </div>
+        <button class="btn btn-secondary" onclick="connecterAdmin()">Connexion</button>
+      </div>
+      <div id="admin-panel" style="display:none;">
+        <div class="admin-section">
+          <div class="section-title">Gestion des équipes</div>
+          <div style="display:flex; gap:0.5rem; margin-top:0.5rem; flex-wrap:wrap;">
+            <input type="text" id="new-equipe" placeholder="Nom de l'équipe" style="max-width:220px;">
+            <button class="btn btn-secondary" onclick="ajouterEquipe()">Ajouter</button>
+          </div>
+          <div id="equipes-admin" style="margin-top:0.75rem;"></div>
+        </div>
+        <div class="admin-section">
+          <div class="section-title">Gestion des journées</div>
+          <div style="display:flex; gap:0.5rem; margin-top:0.5rem; flex-wrap:wrap;">
+            <input type="text" id="new-journee" placeholder="Ex: Journée 14" style="max-width:200px;">
+            <button class="btn btn-secondary" onclick="ajouterJournee()">Ajouter</button>
+          </div>
+          <div id="journees-admin" style="margin-top:0.75rem;"></div>
+        </div>
+        <div class="admin-section">
+          <div class="section-title">Supprimer un résultat</div>
+          <div id="admin-resultats" style="margin-top:0.5rem;"></div>
+        </div>
+        <div class="admin-section">
+          <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+            <button class="btn btn-danger" onclick="resetTout()">Réinitialiser toutes les données</button>
+            <button class="btn btn-secondary" onclick="exporterJSON()">Exporter les données (JSON)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-bg" id="confirm-modal">
+  <div class="modal">
+    <h3 id="modal-title">Confirmer</h3>
+    <p id="modal-msg" style="color:#555; font-size:0.9rem;"></p>
+    <div class="modal-actions">
+      <button class="btn btn-danger" id="modal-ok">Confirmer</button>
+      <button class="btn btn-secondary" onclick="closeModal()">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBR6spvZ7_AmY33UiG-KEhPObECtq2WQUY",
+  authDomain: "championnat-3fd51.firebaseapp.com",
+  projectId: "championnat-3fd51",
+  storageBucket: "championnat-3fd51.firebasestorage.app",
+  messagingSenderId: "982640180534",
+  appId: "1:982640180534:web:7ccb0f0bd3d27713490797",
+  measurementId: "G-R8EG86LHGN"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+let appData = {
+  equipes: [],
+  journees: [],
+  resultats: []
+};
+
+const ADMIN_PASSWORD = "admin2024";
+
+const EQUIPES_DEFAULT = [
+  "Saint Saulve","Anzin","Aulnoy","Le Quesnoy","Thiant","Saint Amand"
+];
+
+// Contacts responsables par équipe
+const CONTACTS = {
+  "Saint Saulve": { nom: "Romulad", tel: "06 46 43 57 53", mail: "vcss@free.fr" },
+  // Complétez les autres équipes ci-dessous :
+  // "Anzin":      { nom: "Prénom Nom", tel: "06 XX XX XX XX", mail: "email@example.fr" },
+  // "Aulnoy":     { nom: "Prénom Nom", tel: "06 XX XX XX XX", mail: "email@example.fr" },
+  // "Le Quesnoy": { nom: "Prénom Nom", tel: "06 XX XX XX XX", mail: "email@example.fr" },
+  // "Thiant":     { nom: "Prénom Nom", tel: "06 XX XX XX XX", mail: "email@example.fr" },
+  // "Saint Amand": { nom: "Prénom Nom", tel: "06 XX XX XX XX", mail: "email@example.fr" },
+};
+const JOURNEES_DEFAULT = [
+  "Journée 1","Journée 2","Journée 3","Journée 4","Journée 5",
+  "Journée 6","Journée 7","Journée 8","Journée 9","Journée 10",
+  "Journée 11","Journée 12","Journée 13","Journée 14","Journée 15",
+  "Journée 16","Journée 17","Journée 18","Journée 19","Journée 20"
+];
+
+function getData() {
+  return appData;
+}
+
+async function chargerResultats() {
+  const snapshot = await getDocs(collection(db, "resultats"));
+
+  appData = {
+    equipes: [...EQUIPES_DEFAULT],
+    journees: [...JOURNEES_DEFAULT],
+    resultats: []
+  };
+
+  snapshot.forEach((doc) => {
+    appData.resultats.push({
+      id: doc.id,
+      ...doc.data()
+    });
+  });
+}
+
+async function saveResultat(data) {
+  await addDoc(collection(db, "resultats"), data);
+}
+
+function initData() {
+  appData = {
+    equipes: [...EQUIPES_DEFAULT],
+    journees: [...JOURNEES_DEFAULT],
+    resultats: []
+  };
+}
+
+function showView(v) {
+  document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  event.target.classList.add('active');
+  if(v==='classement') afficherClassement();
+  if(v==='resultats') { afficherResultats(); peuplerFiltres(); }
+  if(v==='admin') afficherAdmin();
+}
+
+function peuplerSelects() {
+  const d = getData();
+  const sel = (id, items, placeholder) => {
+    const el = document.getElementById(id);
+    const val = el.value;
+    el.innerHTML = `<option value="">${placeholder}</option>` + items.map(e=>`<option value="${e}">${e}</option>`).join('');
+    if(val) el.value = val;
+  };
+  sel('mon-equipe', d.equipes, '— Choisir —');
+  sel('journee-select', d.journees, '— Choisir —');
+  sel('filtre-journee', d.journees, 'Toutes les journées');
+  sel('filtre-equipe', d.equipes, 'Toutes les équipes');
+  updateAdversaires();
+}
+
+function updateAdversaires() {
+  const d = getData();
+  const monEquipe = document.getElementById('mon-equipe').value;
+  const sel = document.getElementById('adversaire-select');
+  sel.innerHTML = '<option value="">— Choisir l\'adversaire —</option>' +
+    d.equipes.filter(e=>e!==monEquipe).map(e=>`<option value="${e}">${e}</option>`).join('');
+  sel.value = '';
+  document.getElementById('match-card').style.display = monEquipe ? 'block' : 'none';
+  updateMatchDisplay();
+}
+
+function updateMatchDisplay() {
+  const adv = document.getElementById('adversaire-select').value;
+  const moi = document.getElementById('mon-equipe').value;
+  if(adv && moi) {
+    document.getElementById('label-domicile').textContent = moi;
+    document.getElementById('label-exterieur').textContent = adv;
+  }
+  updatePreview();
+}
+
+function updatePreview() {
+  const a = parseInt(document.getElementById('score-a').value)||0;
+  const b = parseInt(document.getElementById('score-b').value)||0;
+  const moi = document.getElementById('mon-equipe').value;
+  const adv = document.getElementById('adversaire-select').value;
+  const el = document.getElementById('preview-result');
+  if(!moi||!adv) { el.textContent=''; return; }
+  const res = a>b ? `Victoire de ${moi}` : b>a ? `Victoire de ${adv}` : a===b&&a>0 ? 'Match nul' : '';
+  el.textContent = res;
+  el.style.color = a>b ? '#1d9e75' : b>a ? '#e24b4a' : '#888';
+}
+
+async function soumettreResultat() {
+  const moi = document.getElementById('mon-equipe').value;
+  const journee = document.getElementById('journee-select').value;
+  const adv = document.getElementById('adversaire-select').value;
+  const scoreA = document.getElementById('score-a').value;
+  const scoreB = document.getElementById('score-b').value;
+  const comment = document.getElementById('commentaire').value.trim();
+
+  if(!moi||!journee||!adv) { showToast('Veuillez remplir tous les champs','error'); return; }
+  if(scoreA===''||scoreB==='') { showToast('Entrez les deux scores','error'); return; }
+
+  const d = getData();
+  const existe = d.resultats.find(r=>r.journee===journee&&((r.equipeA===moi&&r.equipeB===adv)||(r.equipeA===adv&&r.equipeB===moi)));
+  if(existe) { showToast('Un résultat existe déjà pour ce match !','error'); return; }
+
+  await saveResultat({
+    journee,
+    equipeA: moi,
+    scoreA: parseInt(scoreA),
+    equipeB: adv,
+    scoreB: parseInt(scoreB),
+    comment,
+    date: new Date().toLocaleDateString('fr-FR')
+  });
+
+  await chargerResultats();
+  showToast('Résultat enregistré avec succès !','success');
+  resetForm();
+}
+
+function resetForm() {
+  document.getElementById('adversaire-select').value='';
+  document.getElementById('score-a').value='';
+  document.getElementById('score-b').value='';
+  document.getElementById('commentaire').value='';
+  document.getElementById('preview-result').textContent='';
+  updateMatchDisplay();
+}
+
+function afficherClassement() {
+  const d = getData();
+  const stats = {};
+  d.equipes.forEach(e => stats[e]={mj:0,mg:0,mp:0,mn:0,sp:0,sc:0,pts:0});
+  d.resultats.forEach(r => {
+    const a=r.equipeA, b=r.equipeB, sA=r.scoreA, sB=r.scoreB;
+    if(!stats[a]||!stats[b]) return;
+    stats[a].mj++; stats[b].mj++;
+    stats[a].sp+=sA; stats[a].sc+=sB;
+    stats[b].sp+=sB; stats[b].sc+=sA;
+    if(sA>sB){
+      stats[a].mg++; stats[b].mp++;
+      stats[a].pts += 4;
+      stats[b].pts += (sB===2) ? 3 : 2;
+    } else if(sB>sA){
+      stats[b].mg++; stats[a].mp++;
+      stats[b].pts += 4;
+      stats[a].pts += (sA===2) ? 3 : 2;
+    } else { stats[a].mn++; stats[b].mn++; stats[a].pts+=2; stats[b].pts+=2; }
+  });
+  const classement = d.equipes.map(e=>({equipe:e,...stats[e]}))
+    .sort((a,b)=>b.pts-a.pts||(b.sp-b.sc)-(a.sp-a.sc));
+
+  const badges = ['🥇','🥈','🥉'];
+  const html = `<table>
+    <thead><tr><th>#</th><th>Équipe</th><th>MJ</th><th>MG</th><th>MP</th><th>MN</th><th>SP</th><th>SC</th><th>PTS</th></tr></thead>
+    <tbody>${classement.map((r,i)=>{
+      const c = CONTACTS[r.equipe];
+      const tooltip = c ? `<span class="team-tooltip">👤 ${c.nom}<br>📞 ${c.tel}<br>✉️ ${c.mail}</span>` : '';
+      return `<tr>
+        <td class="rank">${badges[i]||i+1}</td>
+        <td class="team-equipe">${r.equipe}${tooltip}</td>
+        <td>${r.mj}</td><td>${r.mg}</td><td>${r.mp}</td><td>${r.mn}</td>
+        <td>${r.sp}</td><td>${r.sc}</td><td class="pts">${r.pts}</td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
+  document.getElementById('classement-container').innerHTML = html;
+  const nb = d.resultats.length;
+  document.getElementById('last-update-label').textContent = nb ? `${nb} match${nb>1?'s':''} enregistré${nb>1?'s':''}` : '';
+}
+
+function peuplerFiltres() {
+  const d = getData();
+  ['filtre-journee','filtre-equipe'].forEach(id=>{
+    const el = document.getElementById(id);
+    const val = el.value;
+    const items = id.includes('journee') ? d.journees : d.equipes;
+    const ph = id.includes('journee') ? 'Toutes les journées' : 'Toutes les équipes';
+    el.innerHTML = `<option value="">${ph}</option>`+items.map(e=>`<option value="${e}">${e}</option>`).join('');
+    el.value = val;
+  });
+}
+
+function afficherResultats() {
+  const d = getData();
+  const fj = document.getElementById('filtre-journee')?.value||'';
+  const fe = document.getElementById('filtre-equipe')?.value||'';
+  let res = d.resultats;
+  if(fj) res = res.filter(r=>r.journee===fj);
+  if(fe) res = res.filter(r=>r.equipeA===fe||r.equipeB===fe);
+  res = [...res].reverse();
+  if(!res.length){
+    document.getElementById('resultats-container').innerHTML='<p style="color:#888;text-align:center;padding:2rem;">Aucun résultat.</p>';
+    return;
+  }
+  const html = '<div class="result-list">'+res.map(r=>`
+    <div class="result-item">
+      <div>
+        <span style="font-size:0.75rem;color:#888;">${r.journee} · ${r.date||''}</span><br>
+        <span style="font-weight:600;">${r.equipeA}</span>
+        <span class="result-score"> ${r.scoreA} – ${r.scoreB} </span>
+        <span style="font-weight:600;">${r.equipeB}</span>
+        ${r.comment?`<br><span style="font-size:0.78rem;color:#888;">${r.comment}</span>`:''}
+      </div>
+    </div>`).join('')+'</div>';
+  document.getElementById('resultats-container').innerHTML = html;
+}
+
+let adminConnected = false;
+function connecterAdmin() {
+  const pwd = document.getElementById('admin-pwd').value;
+  if(pwd===ADMIN_PASSWORD){ adminConnected=true; document.getElementById('admin-panel').style.display='block'; afficherAdmin(); showToast('Connecté','success'); }
+  else showToast('Mot de passe incorrect','error');
+}
+
+function afficherAdmin() {
+  if(!adminConnected) return;
+  const d = getData();
+  document.getElementById('equipes-admin').innerHTML = d.equipes.map(e=>
+    `<span style="display:inline-flex;align-items:center;gap:4px;background:#f0f3f8;padding:4px 10px;border-radius:99px;font-size:0.85rem;margin:3px;">
+      ${e} <button onclick="supprimerEquipe('${e}')" style="background:none;border:none;color:#e24b4a;cursor:pointer;font-size:0.9rem;padding:0 2px;">×</button>
+    </span>`).join('');
+  document.getElementById('journees-admin').innerHTML = d.journees.map(j=>
+    `<span style="display:inline-flex;align-items:center;gap:4px;background:#f0f3f8;padding:4px 10px;border-radius:99px;font-size:0.85rem;margin:3px;">
+      ${j} <button onclick="supprimerJournee('${j}')" style="background:none;border:none;color:#e24b4a;cursor:pointer;font-size:0.9rem;padding:0 2px;">×</button>
+    </span>`).join('');
+  const res = [...d.resultats].reverse();
+  document.getElementById('admin-resultats').innerHTML = res.length ?
+    '<div class="result-list">'+res.map(r=>`
+      <div class="result-item">
+        <div><span style="font-size:0.75rem;color:#888;">${r.journee}</span><br>
+        <b>${r.equipeA}</b> ${r.scoreA}–${r.scoreB} <b>${r.equipeB}</b></div>
+        <button class="delete-btn" onclick="supprimerResultat(${r.id})">🗑</button>
+      </div>`).join('')+'</div>'
+    : '<p style="color:#888;font-size:0.88rem;">Aucun résultat.</p>';
+}
+
+function ajouterEquipe() {
+  const val = document.getElementById('new-equipe').value.trim();
+  if(!val) return;
+  const d = getData();
+  if(d.equipes.includes(val)){ showToast('Équipe déjà existante','error'); return; }
+  d.equipes.push(val); saveData(d); peuplerSelects(); afficherAdmin(); document.getElementById('new-equipe').value='';
+  showToast('Équipe ajoutée');
+}
+
+function supprimerEquipe(e) {
+  confirm2(`Supprimer l'équipe "${e}" ?`, ()=>{
+    const d = getData();
+    d.equipes = d.equipes.filter(x=>x!==e);
+    d.resultats = d.resultats.filter(r=>r.equipeA!==e&&r.equipeB!==e);
+    saveData(d); peuplerSelects(); afficherAdmin(); showToast('Équipe supprimée');
+  });
+}
+
+function ajouterJournee() {
+  const val = document.getElementById('new-journee').value.trim();
+  if(!val) return;
+  const d = getData();
+  if(d.journees.includes(val)){ showToast('Journée déjà existante','error'); return; }
+  d.journees.push(val); saveData(d); peuplerSelects(); afficherAdmin(); document.getElementById('new-journee').value='';
+  showToast('Journée ajoutée');
+}
+
+function supprimerJournee(j) {
+  confirm2(`Supprimer "${j}" et tous ses résultats ?`, ()=>{
+    const d = getData();
+    d.journees = d.journees.filter(x=>x!==j);
+    d.resultats = d.resultats.filter(r=>r.journee!==j);
+    saveData(d); peuplerSelects(); afficherAdmin(); showToast('Journée supprimée');
+  });
+}
+
+function supprimerResultat(id) {
+  confirm2('Supprimer ce résultat ?', ()=>{
+    const d = getData();
+    d.resultats = d.resultats.filter(r=>r.id!==id);
+    saveData(d); afficherAdmin(); showToast('Résultat supprimé');
+  });
+}
+
+function resetTout() {
+  confirm2('Réinitialiser TOUTES les données ? Cette action est irréversible.', ()=>{
+    localStorage.removeItem('champ_data'); initData(); peuplerSelects(); afficherAdmin(); showToast('Données réinitialisées');
+  });
+}
+
+function exporterJSON() {
+  const d = getData();
+  const blob = new Blob([JSON.stringify(d, null, 2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'championnat_data.json'; a.click();
+}
+
+let modalCb = null;
+function confirm2(msg, cb) {
+  document.getElementById('modal-msg').textContent = msg;
+  document.getElementById('modal-ok').onclick = ()=>{ closeModal(); cb(); };
+  document.getElementById('confirm-modal').classList.add('open');
+}
+function closeModal() { document.getElementById('confirm-modal').classList.remove('open'); }
+
+let toastTimer;
+function showToast(msg, type='') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'toast show' + (type?' '+type:'');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.classList.remove('show'), 3000);
+}
+
+initData();
+
+await chargerResultats();
+
+peuplerSelects();
+afficherClassement();
+afficherResultats();
+</script>
+</body>
+</html>
